@@ -3,7 +3,6 @@ import whisper
 import os
 import uuid
 import shutil
-import subprocess  # FFmpegを実行するために必要
 
 os.environ["PATH"] += os.pathsep + "/usr/local/bin/ffmpeg"
 
@@ -20,24 +19,16 @@ def transcribe_audio(file_path, model_type="base"):
     return result["text"]
 
 
-# アップロードされたファイルを保存し、必要に応じて変換する関数
-def save_and_convert_file(uploaded_file):
+# アップロードされたファイルを保存する関数
+def save_uploaded_file(uploaded_file):
     try:
         # 一意のファイル名を生成
         unique_filename = str(uuid.uuid4()) + "_" + uploaded_file.name
         file_path = os.path.join(temp_dir, unique_filename)
-        file_path_flac = os.path.splitext(file_path)[0] + ".flac"
 
         with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
-
-        # アップロードされたファイルがFLAC形式でない場合は変換
-        if not uploaded_file.type == "audio/flac":
-            subprocess.run(["ffmpeg", "-i", file_path, file_path_flac])
-            os.remove(file_path)
-            return file_path_flac
-        else:
-            return file_path
+        return file_path
     except Exception as e:
         return None
 
@@ -48,15 +39,12 @@ st.title("Whisperを使った音声文字起こしアプリ")
 # Whisperモデル選択
 model_choice = st.selectbox("モデルを選択してください", ["tiny", "base", "small", "medium"])
 
-# 対応するファイル形式をリストに追加
-uploaded_file = st.file_uploader(
-    "音声ファイルをアップロードしてください", type=["flac", "mp3", "wav", "wma", "m4a"]
-)
+uploaded_file = st.file_uploader("FLACファイルをアップロードしてください", type=["flac"])
 
 # 「文字起こし」ボタンを追加
 if st.button("文字起こし"):
     if uploaded_file is not None:
-        file_path = save_and_convert_file(uploaded_file)
+        file_path = save_uploaded_file(uploaded_file)
         if file_path:
             with st.spinner("音声を文字起こししています..."):
                 text = transcribe_audio(file_path, model_choice)
